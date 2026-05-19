@@ -727,9 +727,16 @@ with tab4:
             "Respostas":                   int(n),
             "Satisfação Atendimento (%)":  round((d["satisfeito_atendimento"]=="Sim").sum()/n*100,1) if n else 0,
             "Confiança (%)":               round((d["confianca"]=="Sim").sum()/n*100,1) if n else 0,
-            "Presencial OK (%)":           round((d["presencial_ok"]=="Sim").sum()/n*100,1) if n else 0,
-            "Balcão Virtual OK (%)":              round((d["virtual_ok"]=="Sim").sum()/n*100,1) if n else 0,
-            "Portal OK (%)":               round((d["portal_ok"]=="Sim").sum()/n*100,1) if n else 0,
+            # Metodologia correta: denominador = usuários do canal
+            "Presencial OK (%)":      round(
+                (d["presencial_ok"]=="Sim").sum() /
+                max(d["canal"].str.contains("Presencial", na=False).sum(), 1) * 100, 1),
+            "Balcão Virtual OK (%)":  round(
+                (d["virtual_ok"]=="Sim").sum() /
+                max(d["canal"].str.contains("Virtual", na=False).sum(), 1) * 100, 1),
+            "Portal OK (%)":          round(
+                (d["portal_ok"]=="Sim").sum() /
+                max(d["canal"].str.contains("Portal/site", na=False).sum(), 1) * 100, 1),
             "Acompanha Redes (%)":         round((d["acompanha_redes"]=="Sim").sum()/n*100,1) if n else 0,
             "Acessibilidade Física (%)":   round((d["acessibilidade_fisica"]=="Sim").sum()/n*100,1) if n else 0,
         }
