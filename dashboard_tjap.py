@@ -354,7 +354,10 @@ with tab1:
         "Satisfação com Atendimento":     pct("satisfeito_atendimento"),
         "Confiança na Justiça AP":        pct("confianca"),
         "Acompanha Redes Sociais":        pct("acompanha_redes"),
-        "Satisfeito com Redes Sociais":   pct("satisfeito_redes"),
+        # Satisfação com redes: base = apenas quem acompanha (metodologia correta)
+        "Satisfeito com Redes Sociais":   round(
+            df[df["acompanha_redes"]=="Sim"]["satisfeito_redes"].eq("Sim").sum() /
+            max(df["acompanha_redes"].eq("Sim").sum(), 1) * 100, 1),
         "Acessibilidade Física":          pct("acessibilidade_fisica"),
         "Acessibilidade Portal Web":      pct("acessibilidade_portal"),
         "Atend. Presencial — Satisfação": p_pres,      # 92.7%
@@ -869,24 +872,24 @@ with tab5:
         </tr>
         <tr>
           <td><b>2</b></td>
-          <td><b>Engajamento nas Redes Sociais</b></td>
-          <td><span class="desemp-red">74,0%</span></td>
-          <td><span class="badge-alta">Alta</span></td>
-          <td>Campanha de comunicação para público não digitalizado, com ênfase em rádio e canais comunitários</td>
-        </tr>
-        <tr>
-          <td><b>3</b></td>
           <td><b>Acessibilidade Física dos Espaços</b></td>
           <td><span class="desemp-red">78,8%</span></td>
-          <td><span class="badge-media">Média</span></td>
+          <td><span class="badge-alta">Alta</span></td>
           <td>Incorporação às obras do Plano de Obras (ABNT NBR 9050 / Lei 13.146/2015), conforme disponibilidade orçamentária</td>
         </tr>
         <tr>
-          <td><b>4</b></td>
+          <td><b>3</b></td>
           <td><b>Satisfação dos Advogados</b></td>
           <td><span class="desemp-red">78,9%</span></td>
           <td><span class="badge-media">Média</span></td>
           <td>Grupo de trabalho com OAB-AP para mapeamento de gargalos processuais e de sistemas</td>
+        </tr>
+        <tr>
+          <td><b>4</b></td>
+          <td><b>Comarcas Remotas — Oiapoque e Calçoene</b></td>
+          <td><span class="desemp-yellow">~83%</span></td>
+          <td><span class="badge-media">Média</span></td>
+          <td>Diagnóstico qualitativo in loco e plano de melhoria específico para comarcas de fronteira</td>
         </tr>
         <tr>
           <td><b>5</b></td>
@@ -897,38 +900,38 @@ with tab5:
         </tr>
         <tr>
           <td><b>6</b></td>
-          <td><b>Comarcas Remotas — Oiapoque e Calçoene</b></td>
-          <td><span class="desemp-yellow">~83%</span></td>
-          <td><span class="badge-baixa">Manutenção</span></td>
-          <td>Diagnóstico qualitativo in loco e plano de melhoria específico para comarcas de fronteira</td>
-        </tr>
-        <tr>
-          <td><b>7</b></td>
           <td><b>Portal / Site — Satisfação</b></td>
           <td><span class="desemp-yellow">88,1%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
           <td>Ampliação do Projeto 60+, integração Rybená e testes de usabilidade com grupos de baixa escolaridade e 45+ anos</td>
         </tr>
         <tr>
-          <td><b>8</b></td>
+          <td><b>7</b></td>
           <td><b>Confiança Institucional</b></td>
           <td><span class="desemp-green">88,0%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
           <td>Ampliar presença digital e comunicação institucional para os 24,4% que não acompanham redes</td>
         </tr>
         <tr>
-          <td><b>9</b></td>
+          <td><b>8</b></td>
           <td><b>Satisfação Geral com Atendimento</b></td>
           <td><span class="desemp-green">90,1%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
           <td>Manter padrão de atendimento presencial; monitorar nos próximos ciclos</td>
         </tr>
         <tr>
-          <td><b>10</b></td>
+          <td><b>9</b></td>
           <td><b>Atend. Presencial — Satisfação</b></td>
           <td><span class="desemp-green">92,7%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
           <td>Manter e replicar as boas práticas do atendimento presencial nos demais canais</td>
+        </tr>
+        <tr>
+          <td><b>10</b></td>
+          <td><b>Engajamento nas Redes Sociais</b></td>
+          <td><span class="desemp-green">96,3%</span></td>
+          <td><span class="badge-baixa">Manutenção</span></td>
+          <td>Manter o engajamento nas redes e ampliar alcance para os 24,4% que ainda não acompanham</td>
         </tr>
       </tbody>
     </table>
