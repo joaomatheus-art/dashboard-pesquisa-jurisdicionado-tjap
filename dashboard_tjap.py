@@ -687,7 +687,7 @@ with tab3:
                       color="Resp", color_discrete_map=color_map)
         fig2.update_traces(
             textposition="outside", textinfo="percent+label",
-            hovertemplate="<b>%{label}</b><br>Respondentes: <b>%{value}</b> de {}<br>%{percent}<extra></extra>".format(len(_df_acomp)),
+            hovertemplate=f"<b>%{{label}}</b><br>Respondentes: <b>%{{value}}</b> de {len(_df_acomp)}<br>%{{percent}}<extra></extra>",
         )
         fig2.update_layout(margin=dict(t=10,b=10,l=0,r=0), showlegend=False, font=FONT_CFG, hoverlabel=HOVER_CFG)
         st.plotly_chart(fig2, use_container_width=True, key="chart_18")
