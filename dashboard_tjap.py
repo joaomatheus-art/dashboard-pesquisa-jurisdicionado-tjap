@@ -211,61 +211,17 @@ df_all = load_data()
 anos_disponiveis = sorted([int(a) for a in df_all["Ano"].unique()])
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
-# ─── Session state para reset de filtros ─────────────────────────────────────
-if "reset" not in st.session_state:
-    st.session_state.reset = False
-
 with st.sidebar:
     if logo_path.exists():
-        # FIX 2+3: logo sem tooltip, botão de reset ao clicar
-        if st.button("", key="logo_btn", help=""):
-            st.session_state.reset = True
-            st.rerun()
         st.markdown(
-            f'''<style>
-            div[data-testid="stBaseButton-secondary"][aria-label=""] button,
-            button[kind="secondary"][data-testid="baseButton-secondary"] {{
-                background: transparent !important;
-                border: none !important;
-                padding: 0 !important;
-                cursor: pointer !important;
-            }}
-            </style>''',
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            f'<div class="logo-box" style="cursor:pointer" title="Clique para resetar filtros">'
-            f'<img src="data:image/png;base64,{img_to_b64(logo_path)}" width="150"/></div>',
+            f'<div class="logo-box"><img src="data:image/png;base64,{img_to_b64(logo_path)}" width="150"/></div>',
             unsafe_allow_html=True,
         )
-
-    st.markdown("### Filtros")
-
-    default_anos    = anos_disponiveis
-    default_comarca = "Todas"
-    default_perfil  = "Todos"
-    default_canal   = "Todos"
-
-    if st.session_state.reset:
-        st.session_state.reset = False
-
-    ano_sel = st.multiselect("Ano", anos_disponiveis,
-                             default=default_anos,
-                             key="sel_ano", format_func=lambda x: str(x))
-    comarcas    = ["Todas"] + sorted(df_all["comarca"].dropna().unique().tolist())
-    comarca_sel = st.selectbox("Comarca / Município", comarcas, key="sel_comarca")
-    perfis      = ["Todos"] + sorted(df_all["perfil"].dropna().unique().tolist())
-    perfil_sel  = st.selectbox("Perfil do Respondente", perfis, key="sel_perfil")
-    canais      = ["Todos"] + sorted(df_all["canal"].dropna().unique().tolist())
-    canal_sel   = st.selectbox("Canal de Atendimento", canais, key="sel_canal")
     st.markdown("---")
     st.caption("Desenvolvido pela Secretaria de Planejamento\nTribunal de Justiça do Estado do Amapá")
 
-# ─── Filtra ───────────────────────────────────────────────────────────────────
-df = df_all[df_all["Ano"].isin(ano_sel)].copy()
-if comarca_sel != "Todas":  df = df[df["comarca"] == comarca_sel]
-if perfil_sel  != "Todos":  df = df[df["perfil"]  == perfil_sel]
-if canal_sel   != "Todos":  df = df[df["canal"]   == canal_sel]
+# ─── Dados sem filtro ─────────────────────────────────────────────────────────
+df = df_all.copy()
 
 total    = len(df)
 color_map = {"Sim": TJAP_GREEN, "Não": COLOR_NAO, "Não sei responder": COLOR_NEUTRO}
@@ -324,10 +280,12 @@ p_confianca = pct("confianca")
 
 # Cálculo correto: canal contém X AND coluna de adequação específica = Sim / total
 def pct_canal(canal_str, col_ok):
-    """% do total que usou o canal E avaliou positivamente a adequação daquele canal."""
-    if total == 0: return 0
-    mask = df["canal"].str.contains(canal_str, na=False) & df[col_ok].eq("Sim")
-    return round(mask.sum() / total * 100, 1)
+    """% de satisfação ENTRE os usuários do canal (denominador = usuários do canal)."""
+    mask_canal = df["canal"].str.contains(canal_str, na=False)
+    denom = mask_canal.sum()
+    if denom == 0: return 0
+    numer = (mask_canal & df[col_ok].eq("Sim")).sum()
+    return round(numer / denom * 100, 1)
 
 p_pres    = pct_canal("Presencial",  "presencial_ok")
 p_virtual = pct_canal("Virtual",            "virtual_ok")  # "Virtual" é o valor na col I
@@ -345,16 +303,16 @@ k1, k2, k3, k4, k5, k6 = st.columns(6)
 kpi(k1, "Total de Respostas",   f"{total:,}".replace(",","."), "respondentes", "")
 kpi(k2, "Satisfação Geral",     f"{p_satisf}%",    "satisfeitos com o atendimento",   "green")
 kpi(k3, "Índice de Confiança",  f"{p_confianca}%", "confiam na Justiça do AP",        "green")
-kpi(k4, "Atend. Presencial",    f"{p_pres}%",      "usuários satisfeitos / total",    "" if p_pres>=70 else "red")
-kpi(k5, "Balcão Virtual",       f"{p_virtual}%",   "usuários satisfeitos / total",    "" if p_virtual>=70 else "red")
-kpi(k6, "Portal / Site",        f"{p_portal}%",    "usuários satisfeitos / total",    "" if p_portal>=70 else "red")
+kpi(k4, "Atend. Presencial",    f"{p_pres}%",      "entre usuários do canal",    "" if p_pres>=70 else "red")
+kpi(k5, "Balcão Virtual",       f"{p_virtual}%",   "entre usuários do canal",    "" if p_virtual>=70 else "red")
+kpi(k6, "Portal / Site",        f"{p_portal}%",    "entre usuários do canal",    "" if p_portal>=70 else "red")
 
 st.markdown("---")
 
 # ─── Abas ─────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Visão Geral", "Perfil dos Respondentes",
-    "Por Comarca", "Canais de Atendimento", "Comparativo Anual", "Conclusão",
+    "Canais de Atendimento", "Comparativo Anual", "Conclusão",
 ])
 
 # ══════════════════════════════════════════════════════════════════════
@@ -396,9 +354,9 @@ with tab1:
         "Satisfeito com Redes Sociais":   pct("satisfeito_redes"),
         "Acessibilidade Física":          pct("acessibilidade_fisica"),
         "Acessibilidade Portal Web":      pct("acessibilidade_portal"),
-        "Atend. Presencial — Satisfação": p_pres,
-        "Balcão Virtual — Satisfação":    p_virtual,
-        "Portal / Site — Satisfação":     p_portal,
+        "Atend. Presencial — Satisfação": p_pres,      # 92.7%
+        "Balcão Virtual — Satisfação":    p_virtual,   # 85.7%
+        "Portal / Site — Satisfação":     p_portal,    # 88.1%
     }
     ind_df = pd.DataFrame(list(indicadores.items()), columns=["Indicador","% Sim"])
     ind_df = ind_df.sort_values("% Sim")
@@ -410,7 +368,7 @@ with tab1:
         marker_color=bar_colors,
         text=[f"{v}%" for v in ind_df["% Sim"]],
         textposition="outside",
-        textfont=dict(family="IBM Plex Sans", size=12, color="#1E293B"),
+        textfont=dict(family="IBM Plex Sans", size=13, color="#1A3A8F", weight=700),
     ))
     add_meta_line(fig3, orientation="h")   # linha azul escuro destacada
     fig3.update_layout(
@@ -531,64 +489,9 @@ with tab2:
     )
 
 # ══════════════════════════════════════════════════════════════════════
-# TAB 3 — Por Comarca
+# TAB 3 — Canais de Atendimento
 # ══════════════════════════════════════════════════════════════════════
 with tab3:
-    st.markdown('<div class="section-header">Volume de Respostas por Comarca</div>', unsafe_allow_html=True)
-    com_vol = df["comarca"].value_counts().reset_index(); com_vol.columns = ["Comarca","Qtd"]
-    fig = px.bar(com_vol, x="Qtd", y="Comarca", orientation="h",
-                 color="Qtd", color_continuous_scale=[[0,TJAP_LIGHT],[1,TJAP_BLUE]],
-                 text="Qtd")
-    fig.update_traces(textposition="outside")
-    fig.update_layout(showlegend=False, coloraxis_showscale=False,
-                      height=max(360, len(com_vol)*38),
-                      margin=dict(t=10,b=10,l=0,r=0),
-                      plot_bgcolor="white", paper_bgcolor="white", font=FONT_CFG, hoverlabel=HOVER_CFG)
-    st.plotly_chart(fig, use_container_width=True, key="chart_11")
-
-    st.markdown('<div class="section-header">Satisfação por Comarca</div>', unsafe_allow_html=True)
-    com_sat = (
-        df.groupby("comarca")["satisfeito_atendimento"]
-        .apply(lambda s: round((s=="Sim").sum()/len(s)*100,1)).reset_index()
-    )
-    com_sat.columns = ["Comarca","% Satisfeitos"]
-    com_sat = com_sat.sort_values("% Satisfeitos", ascending=True)
-    colors_c = [TJAP_GREEN if v>=80 else TJAP_YELLOW if v>=60 else COLOR_NAO for v in com_sat["% Satisfeitos"]]
-    fig2 = go.Figure(go.Bar(
-        x=com_sat["% Satisfeitos"], y=com_sat["Comarca"], orientation="h",
-        marker_color=colors_c,
-        text=[f"{v}%" for v in com_sat["% Satisfeitos"]],
-        textposition="outside",
-        textfont=dict(family="IBM Plex Sans", size=12),
-    ))
-    add_meta_line(fig2, orientation="h")
-    fig2.update_layout(xaxis=dict(range=[0,115]),
-                       height=max(360, len(com_sat)*38),
-                       margin=dict(t=10,b=10,l=0,r=0),
-                       plot_bgcolor="white", paper_bgcolor="white", font=FONT_CFG, hoverlabel=HOVER_CFG)
-    st.plotly_chart(fig2, use_container_width=True, key="chart_12")
-
-    st.markdown('<div class="section-header">Confiança por Comarca</div>', unsafe_allow_html=True)
-    com_conf = (
-        df.groupby("comarca")["confianca"]
-        .apply(lambda s: round((s=="Sim").sum()/len(s)*100,1)).reset_index()
-    )
-    com_conf.columns = ["Comarca","% Confiança"]
-    com_conf = com_conf.sort_values("% Confiança", ascending=False)
-    fig3 = px.bar(com_conf, x="Comarca", y="% Confiança",
-                  color="% Confiança",
-                  color_continuous_scale=[[0,"#fee2e2"],[0.5,TJAP_YELLOW],[1,TJAP_GREEN]],
-                  text=com_conf["% Confiança"].apply(lambda v: f"{v}%"))
-    fig3.update_traces(textposition="outside")
-    fig3.update_layout(coloraxis_showscale=False,
-                       margin=dict(t=10,b=10,l=0,r=0),
-                       plot_bgcolor="white", paper_bgcolor="white", font=FONT_CFG, hoverlabel=HOVER_CFG)
-    st.plotly_chart(fig3, use_container_width=True, key="chart_13")
-
-# ══════════════════════════════════════════════════════════════════════
-# TAB 4 — Canais de Atendimento
-# ══════════════════════════════════════════════════════════════════════
-with tab4:
 
     # ── Análise por Teoria dos Conjuntos ──────────────────────────────────
     st.markdown('<div class="section-header">Análise de Canais — Teoria dos Conjuntos</div>', unsafe_allow_html=True)
@@ -797,7 +700,7 @@ with tab4:
 # ══════════════════════════════════════════════════════════════════════
 # TAB 5 — Comparativo Anual
 # ══════════════════════════════════════════════════════════════════════
-with tab5:
+with tab4:
     st.markdown('<div class="section-header">Comparativo Anual de Indicadores Estratégicos</div>', unsafe_allow_html=True)
 
     metricas_anuais = {}
@@ -889,7 +792,7 @@ with tab5:
 # ══════════════════════════════════════════════════════════════════════
 # TAB 6 — Conclusão
 # ══════════════════════════════════════════════════════════════════════
-with tab6:
+with tab5:
 
     # ── Nível de Confiança ──────────────────────────────────────────────
     st.markdown('<div class="section-header">Parâmetros e Nível de Confiança da Pesquisa</div>', unsafe_allow_html=True)
@@ -952,10 +855,10 @@ with tab6:
         </tr>
         <tr>
           <td><b>2</b></td>
-          <td><b>Satisfação dos Advogados</b></td>
-          <td><span class="desemp-red">78,9%</span></td>
+          <td><b>Engajamento nas Redes Sociais</b></td>
+          <td><span class="desemp-red">74,0%</span></td>
           <td><span class="badge-critica">Crítica</span></td>
-          <td>Grupo de trabalho com OAB-AP para mapeamento de gargalos processuais e de sistemas</td>
+          <td>Campanha de comunicação para público não digitalizado, com ênfase em rádio e canais comunitários</td>
         </tr>
         <tr>
           <td><b>3</b></td>
@@ -966,45 +869,52 @@ with tab6:
         </tr>
         <tr>
           <td><b>4</b></td>
-          <td><b>Balcão Virtual (Zoom/WhatsApp/E-mail)</b></td>
-          <td><span class="desemp-red">33,3%</span></td>
-          <td><span class="badge-critica">Crítica</span></td>
-          <td>Revisão completa dos fluxos via Zoom, WhatsApp e e-mail; capacitação de servidores e padronização de SLA</td>
+          <td><b>Satisfação dos Advogados</b></td>
+          <td><span class="desemp-red">78,9%</span></td>
+          <td><span class="badge-alta">Alta</span></td>
+          <td>Grupo de trabalho com OAB-AP para mapeamento de gargalos processuais e de sistemas</td>
         </tr>
         <tr>
           <td><b>5</b></td>
-          <td><b>Portal / Site — Satisfação</b></td>
-          <td><span class="desemp-red">31,0%</span></td>
-          <td><span class="badge-critica">Crítica</span></td>
-          <td>Ampliação do Projeto 60+, integração Rybená e testes de usabilidade com grupos de baixa escolaridade e 45+ anos</td>
+          <td><b>Balcão Virtual (Zoom/WhatsApp/E-mail)</b></td>
+          <td><span class="desemp-yellow">85,7%</span></td>
+          <td><span class="badge-alta">Alta</span></td>
+          <td>Revisão dos fluxos de atendimento virtual e padronização de SLA; ampliação da capacitação dos servidores</td>
         </tr>
         <tr>
           <td><b>6</b></td>
           <td><b>Comarcas Remotas — Oiapoque e Calçoene</b></td>
           <td><span class="desemp-yellow">~83%</span></td>
-          <td><span class="badge-alta">Alta</span></td>
+          <td><span class="badge-media">Média</span></td>
           <td>Diagnóstico qualitativo in loco e plano de melhoria específico para comarcas de fronteira</td>
         </tr>
         <tr>
-          <td><b>8</b></td>
-          <td><b>Engajamento nas Redes Sociais</b></td>
-          <td><span class="desemp-yellow">74,0%</span></td>
+          <td><b>7</b></td>
+          <td><b>Portal / Site — Satisfação</b></td>
+          <td><span class="desemp-yellow">88,1%</span></td>
           <td><span class="badge-media">Média</span></td>
-          <td>Campanha de comunicação para público não digitalizado, com ênfase em rádio e canais comunitários</td>
+          <td>Ampliação do Projeto 60+, integração Rybená e testes de usabilidade com grupos de baixa escolaridade e 45+ anos</td>
+        </tr>
+        <tr>
+          <td><b>8</b></td>
+          <td><b>Confiança Institucional</b></td>
+          <td><span class="desemp-green">88,0%</span></td>
+          <td><span class="badge-baixa">Manutenção</span></td>
+          <td>Ampliar presença digital e comunicação institucional para os 24,4% que não acompanham redes</td>
         </tr>
         <tr>
           <td><b>9</b></td>
           <td><b>Satisfação Geral com Atendimento</b></td>
           <td><span class="desemp-green">90,1%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
-          <td>Manter padrão de atendimento presencial; monitorar por comarca nos próximos ciclos</td>
+          <td>Manter padrão de atendimento presencial; monitorar nos próximos ciclos</td>
         </tr>
         <tr>
           <td><b>10</b></td>
-          <td><b>Confiança Institucional</b></td>
-          <td><span class="desemp-green">88,0%</span></td>
+          <td><b>Atend. Presencial — Satisfação</b></td>
+          <td><span class="desemp-green">92,7%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
-          <td>Ampliar presença digital e comunicação institucional para os 24,4% que não acompanham redes</td>
+          <td>Manter e replicar as boas práticas do atendimento presencial nos demais canais</td>
         </tr>
       </tbody>
     </table>
