@@ -217,11 +217,14 @@ with st.sidebar:
             f'<div class="logo-box"><img src="data:image/png;base64,{img_to_b64(logo_path)}" width="150"/></div>',
             unsafe_allow_html=True,
         )
+    st.markdown("### Filtro")
+    ano_sel = st.multiselect("Ano", anos_disponiveis, default=anos_disponiveis,
+                             format_func=lambda x: str(x))
     st.markdown("---")
     st.caption("Desenvolvido pela Secretaria de Planejamento\nTribunal de Justiça do Estado do Amapá")
 
-# ─── Dados sem filtro ─────────────────────────────────────────────────────────
-df = df_all.copy()
+# ─── Filtra por ano ──────────────────────────────────────────────────────────
+df = df_all[df_all["Ano"].isin(ano_sel)].copy()
 
 total    = len(df)
 color_map = {"Sim": TJAP_GREEN, "Não": COLOR_NAO, "Não sei responder": COLOR_NEUTRO}
@@ -619,13 +622,19 @@ with tab3:
     </div>
     """, unsafe_allow_html=True)
 
-    # Recalcular satisfação por conjunto base (P, V, S)
+    # Satisfação por canal — usando coluna específica de cada canal (metodologia correta)
+    _canal_cols = {
+        "Presencial":    ("presencial_ok", _P),
+        "Balcão Virtual": ("virtual_ok",   _V),
+        "Portal/site":   ("portal_ok",     _S),
+    }
     _registros = []
-    for _canal_base, _flag in [("Presencial", _P), ("Balcão Virtual", _V), ("Portal/site", _S)]:
+    for _canal_base, (_col_ok, _flag) in _canal_cols.items():
         _sub = df[_flag]
-        _n_base = len(_sub)
+        _sub_ok = _sub[_col_ok].dropna()
+        _n_base = len(_sub_ok)
         for _resp in ["Sim", "Não", "Não sei responder"]:
-            _qtd = (_sub["satisfeito_atendimento"] == _resp).sum()
+            _qtd = (_sub_ok == _resp).sum()
             if _qtd > 0:
                 _registros.append({
                     "Canal": _canal_base,
@@ -671,10 +680,15 @@ with tab3:
         st.plotly_chart(fig, use_container_width=True, key="chart_17")
     with rs2:
         st.markdown("**Satisfeito com o Conteúdo das Redes?**")
-        vc2 = df["satisfeito_redes"].value_counts().reset_index(); vc2.columns = ["Resp","Qtd"]
+        st.caption("Base: apenas quem acompanha as redes sociais do TJAP")
+        _df_acomp = df[df["acompanha_redes"] == "Sim"]
+        vc2 = _df_acomp["satisfeito_redes"].value_counts().reset_index(); vc2.columns = ["Resp","Qtd"]
         fig2 = px.pie(vc2, names="Resp", values="Qtd", hole=0.5,
                       color="Resp", color_discrete_map=color_map)
-        fig2.update_traces(textposition="outside", textinfo="percent+label")
+        fig2.update_traces(
+            textposition="outside", textinfo="percent+label",
+            hovertemplate="<b>%{label}</b><br>Respondentes: <b>%{value}</b> de {}<br>%{percent}<extra></extra>".format(len(_df_acomp)),
+        )
         fig2.update_layout(margin=dict(t=10,b=10,l=0,r=0), showlegend=False, font=FONT_CFG, hoverlabel=HOVER_CFG)
         st.plotly_chart(fig2, use_container_width=True, key="chart_18")
 
@@ -807,7 +821,7 @@ with tab5:
             </div>""", unsafe_allow_html=True)
 
     kpi_stat(c1, "Nível de Confiança", "95%", "intervalo de confiança adotado")
-    kpi_stat(c2, "Margem de Erro",     "3%",  "erro amostral máximo tolerado")
+    kpi_stat(c2, "Margem de Erro",     "5%",  "erro amostral máximo tolerado")
     kpi_stat(c3, "Amostra Coletada",   "1.743","respondentes efetivos")
     kpi_stat(c4, "Amostra Calculada",  "1.100","tamanho amostral mínimo")
 
@@ -816,7 +830,7 @@ with tab5:
                 padding:16px 20px;margin:16px 0;font-size:0.85rem;color:#1E293B;line-height:1.7;">
       <b>Metodologia:</b> Amostragem estratificada proporcional (alocação de Neyman) com estratos por comarca.
       Universo: 117.951 processos pendentes no estado. P = Q = 0,5 (máxima variância).
-      Z = 1,96 (95% de confiança). Erro amostral apurado: <b>2,96%</b> — dentro da margem estabelecida.
+      Z = 1,96 (95% de confiança). Margem de erro adotada: <b>5%</b>. Erro amostral apurado: <b>2,96%</b> — muito abaixo da margem estabelecida, reforçando a precisão da pesquisa.
       A amostra coletada (1.743) supera em 58% o mínimo calculado (1.100), reforçando a robustez estatística dos resultados.
     </div>
     """, unsafe_allow_html=True)
@@ -850,49 +864,49 @@ with tab5:
           <td><b>1</b></td>
           <td><b>Acessibilidade do Portal (PCD)</b></td>
           <td><span class="desemp-red">69,8%</span></td>
-          <td><span class="badge-critica">Crítica</span></td>
+          <td><span class="badge-alta">Alta</span></td>
           <td>Auditoria WCAG 2.1 AA + integração Rybená + testes com público vulnerável</td>
         </tr>
         <tr>
           <td><b>2</b></td>
           <td><b>Engajamento nas Redes Sociais</b></td>
           <td><span class="desemp-red">74,0%</span></td>
-          <td><span class="badge-critica">Crítica</span></td>
+          <td><span class="badge-alta">Alta</span></td>
           <td>Campanha de comunicação para público não digitalizado, com ênfase em rádio e canais comunitários</td>
         </tr>
         <tr>
           <td><b>3</b></td>
           <td><b>Acessibilidade Física dos Espaços</b></td>
           <td><span class="desemp-red">78,8%</span></td>
-          <td><span class="badge-alta">Alta</span></td>
+          <td><span class="badge-media">Média</span></td>
           <td>Incorporação às obras do Plano de Obras (ABNT NBR 9050 / Lei 13.146/2015), conforme disponibilidade orçamentária</td>
         </tr>
         <tr>
           <td><b>4</b></td>
           <td><b>Satisfação dos Advogados</b></td>
           <td><span class="desemp-red">78,9%</span></td>
-          <td><span class="badge-alta">Alta</span></td>
+          <td><span class="badge-media">Média</span></td>
           <td>Grupo de trabalho com OAB-AP para mapeamento de gargalos processuais e de sistemas</td>
         </tr>
         <tr>
           <td><b>5</b></td>
           <td><b>Balcão Virtual (Zoom/WhatsApp/E-mail)</b></td>
           <td><span class="desemp-yellow">85,7%</span></td>
-          <td><span class="badge-alta">Alta</span></td>
+          <td><span class="badge-baixa">Manutenção</span></td>
           <td>Revisão dos fluxos de atendimento virtual e padronização de SLA; ampliação da capacitação dos servidores</td>
         </tr>
         <tr>
           <td><b>6</b></td>
           <td><b>Comarcas Remotas — Oiapoque e Calçoene</b></td>
           <td><span class="desemp-yellow">~83%</span></td>
-          <td><span class="badge-media">Média</span></td>
+          <td><span class="badge-baixa">Manutenção</span></td>
           <td>Diagnóstico qualitativo in loco e plano de melhoria específico para comarcas de fronteira</td>
         </tr>
         <tr>
           <td><b>7</b></td>
           <td><b>Portal / Site — Satisfação</b></td>
           <td><span class="desemp-yellow">88,1%</span></td>
-          <td><span class="badge-media">Média</span></td>
+          <td><span class="badge-baixa">Manutenção</span></td>
           <td>Ampliação do Projeto 60+, integração Rybená e testes de usabilidade com grupos de baixa escolaridade e 45+ anos</td>
         </tr>
         <tr>
