@@ -625,48 +625,77 @@ with tab3:
     </div>
     """, unsafe_allow_html=True)
 
-    # Satisfação por canal — usando coluna específica de cada canal (metodologia correta)
-    _canal_cols = {
-        "Presencial":    ("presencial_ok", _P),
-        "Balcão Virtual": ("virtual_ok",   _V),
-        "Portal/site":   ("portal_ok",     _S),
-    }
+    # Satisfação por canal — metodologia correta:
+    # Presencial: satisfeito_atendimento / usuários presencial
+    # Balcão Virtual: virtual_ok / total virtual users (incl. NaN → "Não Respondeu")
+    # Portal/site:    portal_ok  / total portal  users (incl. NaN → "Não Respondeu")
+    _canal_config = [
+        ("Presencial",    "satisfeito_atendimento", _P,  _P.sum()),
+        ("Balcão Virtual", "virtual_ok",            _V,  _V.sum()),
+        ("Portal/site",   "portal_ok",              _S,  _S.sum()),
+    ]
     _registros = []
-    for _canal_base, (_col_ok, _flag) in _canal_cols.items():
+    for _canal_base, _col_ok, _flag, _total_canal in _canal_config:
         _sub = df[_flag]
-        _sub_ok = _sub[_col_ok].dropna()
-        _n_base = len(_sub_ok)
         for _resp in ["Sim", "Não", "Não sei responder"]:
-            _qtd = (_sub_ok == _resp).sum()
+            _qtd = (_sub[_col_ok] == _resp).sum()
             if _qtd > 0:
                 _registros.append({
                     "Canal": _canal_base,
                     "Resposta": _resp,
-                    "Pct": round(_qtd / _n_base * 100, 1),
+                    "Pct": round(_qtd / _total_canal * 100, 1),
                     "Qtd": _qtd,
+                })
+        # NaN = não respondeu a pergunta específica (exceto presencial que usa satisfeito_atendimento)
+        if _col_ok != "satisfeito_atendimento":
+            _nao_resp = _sub[_col_ok].isna().sum()
+            if _nao_resp > 0:
+                _registros.append({
+                    "Canal": _canal_base,
+                    "Resposta": "Não Respondeu",
+                    "Pct": round(_nao_resp / _total_canal * 100, 1),
+                    "Qtd": _nao_resp,
                 })
     cross_base = pd.DataFrame(_registros)
 
+    _color_map_ext = {**color_map, "Não Respondeu": "#94A3B8"}
+
     fig_sat_canal = px.bar(
         cross_base, x="Canal", y="Pct", color="Resposta",
-        color_discrete_map=color_map, barmode="stack",
-        text=cross_base["Pct"].apply(lambda v: f"{v}%"),
-        custom_data=["Qtd"],
+        color_discrete_map=_color_map_ext, barmode="stack",
+        custom_data=["Qtd", "Pct"],
     )
+    # Texto visível para TODAS as fatias, incluindo pequenas (Não e NSR)
     fig_sat_canal.update_traces(
-        textposition="inside",
+        text=cross_base["Pct"].apply(lambda v: f"{v}%"),
+        textposition="outside",
+        textfont=dict(family="IBM Plex Sans", size=12, color="#1E293B"),
         hovertemplate=(
             "<b>%{x}</b> — %{fullData.name}<br>"
-            "Percentual: <b>%{y}%</b><br>"
+            "Percentual: <b>%{customdata[1]}%</b><br>"
             "Respondentes: <b>%{customdata[0]}</b><extra></extra>"
         ),
     )
+    # Fatias grandes: texto dentro; fatias pequenas (<8%): texto fora para visibilidade
+    for trace in fig_sat_canal.data:
+        new_positions = []
+        new_texts = []
+        for pct_val, text_val in zip(trace.y, trace.text):
+            if pct_val is not None and pct_val >= 8:
+                new_positions.append("inside")
+                new_texts.append(text_val)
+            else:
+                new_positions.append("outside")
+                new_texts.append(text_val if (pct_val is not None and pct_val > 0) else "")
+        trace.textposition = new_positions
+        trace.text = new_texts
+
     fig_sat_canal.update_layout(
-        yaxis=dict(title="% de Respondentes", range=[0,105], gridcolor="#F1F5F9"),
+        yaxis=dict(title="% de Respondentes", range=[0,115], gridcolor="#F1F5F9"),
         xaxis=dict(title=""),
-        margin=dict(t=10,b=10,l=0,r=0),
+        margin=dict(t=10,b=40,l=0,r=0),
         plot_bgcolor="white", paper_bgcolor="white",
-        legend=dict(orientation="h", yanchor="bottom", y=-0.2, font=FONT_CFG),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.25, font=FONT_CFG),
         font=FONT_CFG, hoverlabel=HOVER_CFG,
     )
     st.plotly_chart(fig_sat_canal, use_container_width=True, key="chart_satisf_canal_base")
