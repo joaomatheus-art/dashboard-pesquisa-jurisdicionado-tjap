@@ -658,39 +658,45 @@ with tab3:
                 })
     cross_base = pd.DataFrame(_registros)
 
-    _color_map_ext = {**color_map, "Não Respondeu": "#94A3B8"}
+    # Construção trace a trace — garante textos e posições corretos por canal
+    _color_resp = {
+        "Sim":              TJAP_GREEN,
+        "Não":              COLOR_NAO,
+        "Não sei responder": COLOR_NEUTRO,
+        "Não Respondeu":    "#94A3B8",
+    }
+    _canais_ordem = ["Presencial", "Balcão Virtual", "Portal/site"]
 
-    fig_sat_canal = px.bar(
-        cross_base, x="Canal", y="Pct", color="Resposta",
-        color_discrete_map=_color_map_ext, barmode="stack",
-        custom_data=["Qtd", "Pct"],
-    )
-    # Texto visível para TODAS as fatias, incluindo pequenas (Não e NSR)
-    fig_sat_canal.update_traces(
-        text=cross_base["Pct"].apply(lambda v: f"{v}%"),
-        textposition="outside",
-        textfont=dict(family="IBM Plex Sans", size=12, color="#1E293B"),
-        hovertemplate=(
-            "<b>%{x}</b> — %{fullData.name}<br>"
-            "Percentual: <b>%{customdata[1]}%</b><br>"
-            "Respondentes: <b>%{customdata[0]}</b><extra></extra>"
-        ),
-    )
-    # Fatias grandes: texto dentro; fatias pequenas (<8%): texto fora para visibilidade
-    for trace in fig_sat_canal.data:
-        new_positions = []
-        new_texts = []
-        for pct_val, text_val in zip(trace.y, trace.text):
-            if pct_val is not None and pct_val >= 8:
-                new_positions.append("inside")
-                new_texts.append(text_val)
-            else:
-                new_positions.append("outside")
-                new_texts.append(text_val if (pct_val is not None and pct_val > 0) else "")
-        trace.textposition = new_positions
-        trace.text = new_texts
+    fig_sat_canal = go.Figure()
+    for _resp, _cor in _color_resp.items():
+        _sub_r = cross_base[cross_base["Resposta"] == _resp]
+        if _sub_r.empty:
+            continue
+        # Garantir ordem correta dos canais
+        _sub_r = _sub_r.set_index("Canal").reindex(_canais_ordem).reset_index()
+        _pcts  = _sub_r["Pct"].fillna(0).tolist()
+        _qtds  = _sub_r["Qtd"].fillna(0).tolist()
+        _texts = [f"{v}%" if v > 0 else "" for v in _pcts]
+        _positions = ["inside" if v >= 8 else "outside" for v in _pcts]
+
+        fig_sat_canal.add_trace(go.Bar(
+            x=_canais_ordem,
+            y=_pcts,
+            name=_resp,
+            marker_color=_cor,
+            text=_texts,
+            textposition=_positions,
+            textfont=dict(family="IBM Plex Sans", size=12, color="#1E293B", weight=700),
+            customdata=list(zip(_qtds, _pcts)),
+            hovertemplate=(
+                f"<b>%{{x}}</b> — {_resp}<br>"
+                "Percentual: <b>%{customdata[1]}%</b><br>"
+                "Respondentes: <b>%{customdata[0]:.0f}</b><extra></extra>"
+            ),
+        ))
 
     fig_sat_canal.update_layout(
+        barmode="stack",
         yaxis=dict(title="% de Respondentes", range=[0,115], gridcolor="#F1F5F9"),
         xaxis=dict(title=""),
         margin=dict(t=10,b=40,l=0,r=0),
