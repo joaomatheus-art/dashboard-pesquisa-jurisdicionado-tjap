@@ -100,14 +100,32 @@ st.markdown(f"""
     .kpi-value.red   {{ color: #D94F3D; }}
     .kpi-sub {{ font-size: 0.72rem; color: {TJAP_GRAY}; margin-top: 5px; }}
 
-    /* Cabeçalho de seção */
-    .section-header {{
+    /* Cabeçalho de seção — semântica h2 para acessibilidade (WCAG H42) */
+    h2.section-header, .section-header {{
         font-size: 0.78rem; font-weight: 700; color: {TJAP_BLUE};
         text-transform: uppercase; letter-spacing: 0.09em;
         border-bottom: 2px solid {TJAP_GREEN};
         padding-bottom: 5px; margin: 24px 0 14px 0;
     }}
 
+    /* WCAG 2.4.1: Skip-to-main link para navegação por teclado */
+    .skip-link {{
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: {TJAP_BLUE};
+        color: white;
+        padding: 8px 16px;
+        text-decoration: none;
+        font-family: 'IBM Plex Sans', sans-serif;
+        font-size: 0.85rem;
+        z-index: 9999;
+        border-radius: 0 0 6px 0;
+        transition: top 0.2s;
+    }}
+    .skip-link:focus {{
+        top: 0;
+    }}
     /* FIX 3+7: Tabs – negrito, borda grossa e cor amarela TJAP na aba ativa */
     .stTabs [data-baseweb="tab-list"] {{
         border-bottom: 2px solid #E2E8F0;
@@ -214,7 +232,7 @@ anos_disponiveis = sorted([int(a) for a in df_all["Ano"].unique()])
 with st.sidebar:
     if logo_path.exists():
         st.markdown(
-            f'<div class="logo-box"><img src="data:image/png;base64,{img_to_b64(logo_path)}" width="150"/></div>',
+            f'<div class="logo-box"><img src="data:image/png;base64,{img_to_b64(logo_path)}" width="150" alt="Logo do Tribunal de Justiça do Estado do Amapá"/></div>',
             unsafe_allow_html=True,
         )
     st.markdown("### Filtro")
@@ -252,7 +270,7 @@ def add_meta_line(fig, orientation="v"):
     """FIX 2: linha de meta azul escuro, destaque e anotação visível."""
     kw = dict(
         line_dash="dash", line_color=TJAP_BLUE, line_width=2,
-        annotation_text="<b>Meta: 80%</b>",
+        annotation_text="<strong>Meta: 80%</strong>",
         annotation_font=dict(color=TJAP_BLUE, size=13, family="IBM Plex Sans"),
         annotation_bgcolor="rgba(232,240,255,0.92)",
         annotation_bordercolor=TJAP_BLUE,
@@ -265,12 +283,18 @@ def add_meta_line(fig, orientation="v"):
         fig.add_vline(x=80, **kw)
 
 # ─── Cabeçalho ───────────────────────────────────────────────────────────────
+# WCAG 2.4.1: Link para pular para o conteúdo principal
+st.markdown(
+    '<a href="#conteudo-principal" class="skip-link">Pular para o conteúdo principal</a>',
+    unsafe_allow_html=True
+)
+st.markdown('<main id="conteudo-principal">', unsafe_allow_html=True)
 st.markdown(f"""
 <div style="background:linear-gradient(90deg,{TJAP_BLUE},{TJAP_GREEN});
      border-radius:12px; padding:20px 28px; margin-bottom:18px; color:white;">
-  <div style="font-size:1.4rem; font-weight:700; font-family:'IBM Plex Serif',serif;">
+  <h1 style="font-size:1.4rem; font-weight:700; font-family:'IBM Plex Serif',serif; margin:0; color:white;">
     Dashboard de Satisfação do Jurisdicionado
-  </div>
+  </h1>
   <div style="font-size:0.85rem; opacity:.85; margin-top:4px;">
     Tribunal de Justiça do Estado do Amapá &nbsp;|&nbsp; Pesquisa Institucional
   </div>
@@ -325,7 +349,7 @@ with tab1:
     c1, c2 = st.columns(2)
 
     with c1:
-        st.markdown('<div class="section-header">Satisfação com o Atendimento</div>', unsafe_allow_html=True)
+        st.markdown('<h2 class="section-header">Satisfação com o Atendimento</h2>', unsafe_allow_html=True)
         vc = df["satisfeito_atendimento"].value_counts().reset_index()
         vc.columns = ["Resposta","Qtd"]
         fig = px.pie(vc, names="Resposta", values="Qtd", hole=0.55,
@@ -337,7 +361,7 @@ with tab1:
         st.plotly_chart(fig, use_container_width=True, key="chart_1")
 
     with c2:
-        st.markdown('<div class="section-header">Confia na Justiça do Amapá?</div>', unsafe_allow_html=True)
+        st.markdown('<h2 class="section-header">Confia na Justiça do Amapá?</h2>', unsafe_allow_html=True)
         vc2 = df["confianca"].value_counts().reset_index()
         vc2.columns = ["Resposta","Qtd"]
         fig2 = px.pie(vc2, names="Resposta", values="Qtd", hole=0.55,
@@ -349,7 +373,7 @@ with tab1:
         st.plotly_chart(fig2, use_container_width=True, key="chart_2")
 
     # FIX 2: Indicadores Estratégicos com linha de meta visível
-    st.markdown('<div class="section-header">Indicadores Estratégicos vs. Meta de 80%</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Indicadores Estratégicos vs. Meta de 80%</h2>', unsafe_allow_html=True)
     indicadores = {
         "Satisfação com Atendimento":     pct("satisfeito_atendimento"),
         "Confiança na Justiça AP":        pct("confianca"),
@@ -387,7 +411,7 @@ with tab1:
     )
     st.plotly_chart(fig3, use_container_width=True, key="chart_3")
 
-    st.markdown('<div class="section-header">Evolução de Respostas no Período</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Evolução de Respostas no Período</h2>', unsafe_allow_html=True)
     df_time = df.groupby(df["timestamp"].dt.date).size().reset_index(name="Respostas")
     df_time.columns = ["Data","Respostas"]
     fig4 = px.area(df_time, x="Data", y="Respostas", color_discrete_sequence=[TJAP_BLUE])
@@ -405,7 +429,7 @@ with tab2:
     r1c1, r1c2 = st.columns(2)
 
     with r1c1:
-        st.markdown('<div class="section-header">Gênero</div>', unsafe_allow_html=True)
+        st.markdown('<h2 class="section-header">Gênero</h2>', unsafe_allow_html=True)
         g = df["genero"].value_counts().reset_index(); g.columns = ["Gênero","Qtd"]
         fig = px.bar(g, x="Gênero", y="Qtd", color="Gênero", text="Qtd",
                      color_discrete_sequence=[TJAP_BLUE, TJAP_GREEN, TJAP_YELLOW, TJAP_GRAY])
@@ -415,7 +439,7 @@ with tab2:
         st.plotly_chart(fig, use_container_width=True, key="chart_5")
 
     with r1c2:
-        st.markdown('<div class="section-header">Faixa Etária</div>', unsafe_allow_html=True)
+        st.markdown('<h2 class="section-header">Faixa Etária</h2>', unsafe_allow_html=True)
         fe = df["faixa_etaria"].value_counts().reset_index(); fe.columns = ["Faixa","Qtd"]
         order = ["18 a 24 anos","25 a 34 anos","35 a 44 anos","45 a 59 anos","60 anos ou +"]
         fe["Faixa"] = pd.Categorical(fe["Faixa"], categories=order, ordered=True)
@@ -430,7 +454,7 @@ with tab2:
     r2c1, r2c2 = st.columns(2)
 
     with r2c1:
-        st.markdown('<div class="section-header">Grau de Instrução</div>', unsafe_allow_html=True)
+        st.markdown('<h2 class="section-header">Grau de Instrução</h2>', unsafe_allow_html=True)
         gi = df["instrucao"].value_counts().reset_index(); gi.columns = ["Instrução","Qtd"]
         fig = px.pie(gi, names="Instrução", values="Qtd",
                      color_discrete_sequence=px.colors.sequential.Blues_r)
@@ -439,7 +463,7 @@ with tab2:
         st.plotly_chart(fig, use_container_width=True, key="chart_7")
 
     with r2c2:
-        st.markdown('<div class="section-header">Renda Familiar (Salários Mínimos)</div>', unsafe_allow_html=True)
+        st.markdown('<h2 class="section-header">Renda Familiar (Salários Mínimos)</h2>', unsafe_allow_html=True)
         ri = df["renda"].value_counts().reset_index(); ri.columns = ["Renda","Qtd"]
         order_r = ["Até 2 SM","Entre 2 a 4 SM","Entre 4 a 10 SM",
                    "Entre 10 a 20 SM","Acima de 20 SM","Não quer responder"]
@@ -452,7 +476,7 @@ with tab2:
                           plot_bgcolor="white", paper_bgcolor="white", font=FONT_CFG, hoverlabel=HOVER_CFG)
         st.plotly_chart(fig, use_container_width=True, key="chart_8")
 
-    st.markdown('<div class="section-header">Perfil dos Respondentes</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Perfil dos Respondentes</h2>', unsafe_allow_html=True)
     pr = df["perfil"].value_counts().reset_index(); pr.columns = ["Perfil","Qtd"]
     pr["Pct"] = (pr["Qtd"] / pr["Qtd"].sum() * 100).round(1)
     fig = px.bar(pr, x="Qtd", y="Perfil", orientation="h",
@@ -464,7 +488,7 @@ with tab2:
                       plot_bgcolor="white", paper_bgcolor="white", font=FONT_CFG, hoverlabel=HOVER_CFG)
     st.plotly_chart(fig, use_container_width=True, key="chart_9")
 
-    st.markdown('<div class="section-header">Satisfação por Gênero</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Satisfação por Gênero</h2>', unsafe_allow_html=True)
     cross = df.groupby("genero")["satisfeito_atendimento"].value_counts(normalize=True).mul(100).round(1).reset_index()
     cross.columns = ["Gênero","Resposta","Pct"]
     fig = px.bar(cross, x="Gênero", y="Pct", color="Resposta",
@@ -477,7 +501,7 @@ with tab2:
     st.plotly_chart(fig, use_container_width=True, key="chart_10")
 
     # FIX 4: Tabela sem matplotlib
-    st.markdown('<div class="section-header">Resumo por Grau de Instrução</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Resumo por Grau de Instrução</h2>', unsafe_allow_html=True)
     resumo = (
         df.groupby("instrucao").agg(
             Respondentes=("genero","count"),
@@ -500,12 +524,12 @@ with tab2:
 with tab3:
 
     # ── Análise por Teoria dos Conjuntos ──────────────────────────────────
-    st.markdown('<div class="section-header">Análise de Canais — Teoria dos Conjuntos</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Análise de Canais — Teoria dos Conjuntos</h2>', unsafe_allow_html=True)
     st.markdown("""
     <div style="background:#F0F4FF;border-left:4px solid #1A3A8F;border-radius:8px;
                 padding:12px 18px;margin-bottom:16px;font-size:0.82rem;color:#1E293B;line-height:1.6;">
-      <b>Nota metodológica:</b> Respondentes que marcaram combinações de canais (ex.: "Presencial, Virtual")
-      utilizaram <b>ambos os canais</b> — não representam um grupo separado. A análise abaixo aplica
+      <strong>Nota metodológica:</strong> Respondentes que marcaram combinações de canais (ex.: "Presencial, Virtual")
+      utilizaram <strong>ambos os canais</strong> — não representam um grupo separado. A análise abaixo aplica
       a teoria dos conjuntos para contabilizar o alcance real de cada canal, incluindo os usos combinados.
     </div>
     """, unsafe_allow_html=True)
@@ -551,7 +575,7 @@ with tab3:
     # Gráfico 1: Alcance total por canal (barras empilhadas: exclusivo + compartilhado)
     ca_left, ca_right = st.columns(2)
     with ca_left:
-        st.markdown('<div class="section-header">Alcance por Canal (com sobreposições)</div>', unsafe_allow_html=True)
+        st.markdown('<h2 class="section-header">Alcance por Canal (com sobreposições)</h2>', unsafe_allow_html=True)
         canais_nomes = ["Presencial", "Balcão Virtual", "Portal/site"]
         excl  = [_only_P, _only_V, _only_S]
         combi = [_tot_P - _only_P, _tot_V - _only_V, _tot_S - _only_S]
@@ -561,13 +585,13 @@ with tab3:
             name="Uso exclusivo", x=canais_nomes, y=excl,
             marker_color=TJAP_BLUE, text=excl,
             textposition="inside", textfont=dict(color="white", family="IBM Plex Sans", size=12),
-            hovertemplate="<b>%{x}</b> — Uso exclusivo<br>Respondentes: <b>%{y}</b><extra></extra>",
+            hovertemplate="<strong>%{x}</strong> — Uso exclusivo<br>Respondentes: <strong>%{y}</strong><extra></extra>",
         ))
         fig_conj.add_trace(go.Bar(
             name="Uso combinado", x=canais_nomes, y=combi,
             marker_color=TJAP_YELLOW, text=combi,
             textposition="inside", textfont=dict(color="#1E293B", family="IBM Plex Sans", size=12),
-            hovertemplate="<b>%{x}</b> — Uso combinado<br>Respondentes: <b>%{y}</b><extra></extra>",
+            hovertemplate="<strong>%{x}</strong> — Uso combinado<br>Respondentes: <strong>%{y}</strong><extra></extra>",
         ))
         fig_conj.update_layout(
             barmode="stack", plot_bgcolor="white", paper_bgcolor="white",
@@ -580,7 +604,7 @@ with tab3:
         st.plotly_chart(fig_conj, use_container_width=True, key="chart_conjuntos_alcance")
 
     with ca_right:
-        st.markdown('<div class="section-header">Distribuição das Combinações</div>', unsafe_allow_html=True)
+        st.markdown('<h2 class="section-header">Distribuição das Combinações</h2>', unsafe_allow_html=True)
         combos_labels = [
             "Somente Presencial", "Somente Balcão Virtual", "Somente Portal/site",
             "Presencial + Balcão Virtual", "Presencial + Portal", "Virtual + Portal",
@@ -598,9 +622,9 @@ with tab3:
             textposition="outside",
             textfont=dict(family="IBM Plex Sans", size=11, color="#1E293B"),
             hovertemplate=(
-                "<b>%{y}</b><br>"
-                "Respondentes: <b>%{x}</b><br>"
-                "Percentual: <b>%{customdata}%</b><extra></extra>"
+                "<strong>%{y}</strong><br>"
+                "Respondentes: <strong>%{x}</strong><br>"
+                "Percentual: <strong>%{customdata}%</strong><extra></extra>"
             ),
             customdata=combos_pct,
         ))
@@ -615,7 +639,7 @@ with tab3:
 
     # Tabela-resumo de teoria dos conjuntos
 
-    st.markdown('<div class="section-header">Satisfação por Canal — Três Conjuntos Base</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Satisfação por Canal — Três Conjuntos Base</h2>', unsafe_allow_html=True)
     st.markdown("""
     <div style="background:#F0F4FF;border-left:4px solid #1A3A8F;border-radius:8px;
                 padding:10px 16px;margin-bottom:14px;font-size:0.8rem;color:#1E293B;">
@@ -689,9 +713,9 @@ with tab3:
             textfont=dict(family="IBM Plex Sans", size=12, color="#1E293B", weight=700),
             customdata=list(zip(_qtds, _pcts)),
             hovertemplate=(
-                f"<b>%{{x}}</b> — {_resp}<br>"
-                "Percentual: <b>%{customdata[1]}%</b><br>"
-                "Respondentes: <b>%{customdata[0]:.0f}</b><extra></extra>"
+                f"<strong>%{{x}}</strong> — {_resp}<br>"
+                "Percentual: <strong>%{customdata[1]}%</strong><br>"
+                "Respondentes: <strong>%{customdata[0]:.0f}</strong><extra></extra>"
             ),
         ))
 
@@ -706,7 +730,7 @@ with tab3:
     )
     st.plotly_chart(fig_sat_canal, use_container_width=True, key="chart_satisf_canal_base")
 
-    st.markdown('<div class="section-header">Redes Sociais do TJAP</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Redes Sociais do TJAP</h2>', unsafe_allow_html=True)
     rs1, rs2 = st.columns(2)
     with rs1:
         st.markdown("**Acompanha as Redes Sociais?**")
@@ -725,12 +749,12 @@ with tab3:
                       color="Resp", color_discrete_map=color_map)
         fig2.update_traces(
             textposition="outside", textinfo="percent+label",
-            hovertemplate=f"<b>%{{label}}</b><br>Respondentes: <b>%{{value}}</b> de {len(_df_acomp)}<br>%{{percent}}<extra></extra>",
+            hovertemplate=f"<strong>%{{label}}</strong><br>Respondentes: <strong>%{{value}}</strong> de {len(_df_acomp)}<br>%{{percent}}<extra></extra>",
         )
         fig2.update_layout(margin=dict(t=10,b=10,l=0,r=0), showlegend=False, font=FONT_CFG, hoverlabel=HOVER_CFG)
         st.plotly_chart(fig2, use_container_width=True, key="chart_18")
 
-    st.markdown('<div class="section-header">Acessibilidade</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Acessibilidade</h2>', unsafe_allow_html=True)
     ac1, ac2 = st.columns(2)
     with ac1:
         st.markdown("**Adaptações nos espaços físicos?**")
@@ -753,7 +777,7 @@ with tab3:
 # TAB 5 — Comparativo Anual
 # ══════════════════════════════════════════════════════════════════════
 with tab4:
-    st.markdown('<div class="section-header">Comparativo Anual de Indicadores Estratégicos</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Comparativo Anual de Indicadores Estratégicos</h2>', unsafe_allow_html=True)
 
     metricas_anuais = {}
     for ano in sorted(df_all["Ano"].unique()):
@@ -807,7 +831,7 @@ with tab4:
     )
     st.plotly_chart(fig_vol, use_container_width=True, key="chart_21")
 
-    st.markdown('<div class="section-header">Radar de Indicadores por Ano</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Radar de Indicadores por Ano</h2>', unsafe_allow_html=True)
     radar_cols   = ["Satisfação Atendimento (%)","Confiança (%)","Presencial OK (%)",
                     "Balcão Virtual OK (%)","Portal OK (%)","Acompanha Redes (%)","Acessibilidade Física (%)"]
     radar_labels = ["Satisfação","Confiança","Presencial","Balcão Virtual","Portal","Redes","Acessib."]
@@ -830,7 +854,7 @@ with tab4:
     )
     st.plotly_chart(fig_radar, use_container_width=True, key="chart_22")
 
-    st.markdown('<div class="section-header">Evolução dos Indicadores</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Evolução dos Indicadores</h2>', unsafe_allow_html=True)
     df_long = df_anual.melt(id_vars="Ano", value_vars=radar_cols,
                              var_name="Indicador", value_name="Valor (%)")
     fig_line = px.line(df_long, x="Ano", y="Valor (%)", color="Indicador",
@@ -854,7 +878,7 @@ with tab4:
 with tab5:
 
     # ── Nível de Confiança ──────────────────────────────────────────────
-    st.markdown('<div class="section-header">Parâmetros e Nível de Confiança da Pesquisa</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Parâmetros e Nível de Confiança da Pesquisa</h2>', unsafe_allow_html=True)
 
     c1, c2, c3, c4 = st.columns(4)
     def kpi_stat(col, label, value, sub):
@@ -873,14 +897,14 @@ with tab5:
     st.markdown("""
     <div style="background:#F0F4FF;border-left:4px solid #1A3A8F;border-radius:8px;
                 padding:16px 20px;margin:16px 0;font-size:0.85rem;color:#1E293B;line-height:1.7;">
-      <b>Metodologia:</b> Amostragem estratificada proporcional (alocação de Neyman) com estratos por comarca.
+      <strong>Metodologia:</strong> Amostragem estratificada proporcional (alocação de Neyman) com estratos por comarca.
       Universo: 117.951 processos pendentes no estado. P = Q = 0,5 (máxima variância).
-      Z = 1,96 (95% de confiança). Margem de erro adotada: <b>5%</b>. Erro amostral apurado: <b>2,96%</b> — muito abaixo da margem estabelecida, reforçando a precisão da pesquisa.
+      Z = 1,96 (95% de confiança). Margem de erro adotada: <strong>5%</strong>. Erro amostral apurado: <strong>2,96%</strong> — muito abaixo da margem estabelecida, reforçando a precisão da pesquisa.
       A amostra coletada (1.743) supera em 58% o mínimo calculado (1.100), reforçando a robustez estatística dos resultados.
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="section-header">Matriz de Prioridades — Pontos de Ação Identificados</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Matriz de Prioridades — Pontos de Ação Identificados</h2>', unsafe_allow_html=True)
     st.markdown("""
     <style>
     .matriz-table { width:100%; border-collapse:collapse; font-family:'IBM Plex Sans',sans-serif; font-size:0.82rem; }
@@ -897,6 +921,7 @@ with tab5:
     .desemp-green   { color:#166534; font-weight:700; }
     </style>
     <table class="matriz-table">
+      <caption style="text-align:left;font-size:0.85rem;font-weight:600;color:#1A3A8F;padding-bottom:8px;">Pontos de ação institucional identificados na Pesquisa de Satisfação do Jurisdicionado 2025</caption>
       <thead><tr>
         <th>#</th>
         <th>Indicador / Área de Atenção</th>
@@ -906,71 +931,71 @@ with tab5:
       </tr></thead>
       <tbody>
         <tr>
-          <td><b>1</b></td>
-          <td><b>Acessibilidade do Portal (PCD)</b></td>
+          <td><strong>1</strong></td>
+          <td><strong>Acessibilidade do Portal (PCD)</strong></td>
           <td><span class="desemp-red">69,8%</span></td>
           <td><span class="badge-alta">Alta</span></td>
           <td>Auditoria WCAG 2.1 AA + integração Rybená + testes com público vulnerável</td>
         </tr>
         <tr>
-          <td><b>2</b></td>
-          <td><b>Acessibilidade Física dos Espaços</b></td>
+          <td><strong>2</strong></td>
+          <td><strong>Acessibilidade Física dos Espaços</strong></td>
           <td><span class="desemp-red">78,8%</span></td>
           <td><span class="badge-alta">Alta</span></td>
           <td>Incorporação às obras do Plano de Obras (ABNT NBR 9050 / Lei 13.146/2015), conforme disponibilidade orçamentária</td>
         </tr>
         <tr>
-          <td><b>3</b></td>
-          <td><b>Satisfação dos Advogados</b></td>
+          <td><strong>3</strong></td>
+          <td><strong>Satisfação dos Advogados</strong></td>
           <td><span class="desemp-red">78,9%</span></td>
           <td><span class="badge-media">Média</span></td>
           <td>Grupo de trabalho com OAB-AP para mapeamento de gargalos processuais e de sistemas</td>
         </tr>
         <tr>
-          <td><b>4</b></td>
-          <td><b>Comarcas Remotas — Oiapoque e Calçoene</b></td>
+          <td><strong>4</strong></td>
+          <td><strong>Comarcas Remotas — Oiapoque e Calçoene</strong></td>
           <td><span class="desemp-yellow">~83%</span></td>
           <td><span class="badge-media">Média</span></td>
           <td>Diagnóstico qualitativo in loco e plano de melhoria específico para comarcas de fronteira</td>
         </tr>
         <tr>
-          <td><b>5</b></td>
-          <td><b>Balcão Virtual (Zoom/WhatsApp/E-mail)</b></td>
+          <td><strong>5</strong></td>
+          <td><strong>Balcão Virtual (Zoom/WhatsApp/E-mail)</strong></td>
           <td><span class="desemp-yellow">85,7%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
           <td>Revisão dos fluxos de atendimento virtual e padronização de SLA; ampliação da capacitação dos servidores</td>
         </tr>
         <tr>
-          <td><b>6</b></td>
-          <td><b>Portal / Site — Satisfação</b></td>
+          <td><strong>6</strong></td>
+          <td><strong>Portal / Site — Satisfação</strong></td>
           <td><span class="desemp-yellow">88,1%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
           <td>Ampliação do Projeto 60+, integração Rybená e testes de usabilidade com grupos de baixa escolaridade e 45+ anos</td>
         </tr>
         <tr>
-          <td><b>7</b></td>
-          <td><b>Confiança Institucional</b></td>
+          <td><strong>7</strong></td>
+          <td><strong>Confiança Institucional</strong></td>
           <td><span class="desemp-green">88,0%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
           <td>Ampliar presença digital e comunicação institucional para os 24,4% que não acompanham redes</td>
         </tr>
         <tr>
-          <td><b>8</b></td>
-          <td><b>Satisfação Geral com Atendimento</b></td>
+          <td><strong>8</strong></td>
+          <td><strong>Satisfação Geral com Atendimento</strong></td>
           <td><span class="desemp-green">90,1%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
           <td>Manter padrão de atendimento presencial; monitorar nos próximos ciclos</td>
         </tr>
         <tr>
-          <td><b>9</b></td>
-          <td><b>Atend. Presencial — Satisfação</b></td>
+          <td><strong>9</strong></td>
+          <td><strong>Atend. Presencial — Satisfação</strong></td>
           <td><span class="desemp-green">92,7%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
           <td>Manter e replicar as boas práticas do atendimento presencial nos demais canais</td>
         </tr>
         <tr>
-          <td><b>10</b></td>
-          <td><b>Engajamento nas Redes Sociais</b></td>
+          <td><strong>10</strong></td>
+          <td><strong>Engajamento nas Redes Sociais</strong></td>
           <td><span class="desemp-green">96,3%</span></td>
           <td><span class="badge-baixa">Manutenção</span></td>
           <td>Manter o engajamento nas redes e ampliar alcance para os 24,4% que ainda não acompanham</td>
@@ -979,6 +1004,7 @@ with tab5:
     </table>
     """, unsafe_allow_html=True)
 
+st.markdown('</main>', unsafe_allow_html=True)
 # ─── Rodapé ───────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown(f"""
