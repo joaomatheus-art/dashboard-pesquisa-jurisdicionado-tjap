@@ -166,6 +166,14 @@ st.markdown(f"""
         border-radius: 8px !important;
     }}
 
+    /* FIX: Ocultar badge do Streamlit Cloud (link sem nome acessível - WCAG 4.1.2) */
+    a[href="https://streamlit.io/cloud"],
+    ._viewerBadge_nim44_23,
+    ._container_gzau3_1 {{
+        display: none !important;
+        visibility: hidden !important;
+    }}
+
     /* FIX 2: Remover tooltip do botão de colapso da sidebar */
     [data-testid="collapsedControl"] {{
         pointer-events: none;
@@ -283,12 +291,26 @@ def add_meta_line(fig, orientation="v"):
         fig.add_vline(x=80, **kw)
 
 # ─── Cabeçalho ───────────────────────────────────────────────────────────────
+# WCAG 3.1.1: Definir idioma da página como pt-BR
+st.markdown(
+    '''<script>
+    try {
+        document.documentElement.setAttribute("lang", "pt-BR");
+        document.documentElement.setAttribute("xml:lang", "pt-BR");
+        // Tentar setar no documento pai (iframe)
+        if (window.parent && window.parent.document) {
+            window.parent.document.documentElement.setAttribute("lang", "pt-BR");
+        }
+    } catch(e) {}
+    </script>''',
+    unsafe_allow_html=True
+)
 # WCAG 2.4.1: Link para pular para o conteúdo principal
 st.markdown(
     '<a href="#conteudo-principal" class="skip-link">Pular para o conteúdo principal</a>',
     unsafe_allow_html=True
 )
-st.markdown('<main id="conteudo-principal">', unsafe_allow_html=True)
+st.markdown('<div id="conteudo-principal" role="main" aria-label="Conteúdo principal">', unsafe_allow_html=True)
 st.markdown(f"""
 <div style="background:linear-gradient(90deg,{TJAP_BLUE},{TJAP_GREEN});
      border-radius:12px; padding:20px 28px; margin-bottom:18px; color:white;">
@@ -1004,7 +1026,7 @@ with tab5:
     </table>
     """, unsafe_allow_html=True)
 
-st.markdown('</main>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 # ─── Rodapé ───────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown(f"""
